@@ -1,67 +1,84 @@
 package com.github.extraplays.ZenORM.database.impl;
 
-import com.github.extraplays.ZenORM.database.DatabaseManager;
 import com.github.extraplays.ZenORM.database.annotations.*;
+import com.github.extraplays.ZenORM.database.enums.ColumnType;
 
 import java.lang.reflect.Field;
-import java.sql.Connection;
-import java.sql.SQLException;
-import java.sql.Statement;
+
+import javax.sql.DataSource;
+import java.util.ArrayList;
+import java.util.List;
 
 public class TableGenerator {
 
-    public static void createTable(Class<?> clazz) {
+    public static void createTable(Class<?> clazz, DataSource dataSource) {
 
         if (!clazz.isAnnotationPresent(Table.class)) {
-            throw new IllegalArgumentException("@Table annotation not found in class " + clazz.getName());
+            throw new IllegalArgumentException("The class must have the @Table annotation");
         }
 
         Table table = clazz.getAnnotation(Table.class);
         StringBuilder sql = new StringBuilder("CREATE TABLE IF NOT EXISTS " + table.name() + " (");
 
+        List<String> primaryKeys = new ArrayList<>();
+
         Field[] fields = clazz.getDeclaredFields();
         for (Field field : fields) {
+            if (field.isAnnotationPresent(Column.class)) {
+                Column column = field.getAnnotation(Column.class);
+                StringBuilder columnDef = new StringBuilder(column.name() + " " + column.type().name());
+                switch (column.type()){
+                    case VARCHAR:
+                        columnDef.append("(").append(column.length()).append(")");
+                        break;
+                    case DECIMAL:
+                        columnDef.append("(").append(column.precision()).append(",").append(column.scale()).append(")");
+                        break;
+                }
 
-            String columnName = field.getName();
-            String columnType = getColumnType(field);
+                if (column.autoIncrement()) {
+                    columnDef.append(" AUTO_INCREMENT");
+                }
 
-            if (columnType.isEmpty()) continue;
+                if (!column.nullable()) {
+                    columnDef.append(" NOT NULL");
+                }
 
-            sql.append(columnName).append(" ").append(columnType).append(", ");
+                if (!column.defaultValue().isEmpty()) {
+
+                    if (column.type() == ColumnType.TIMESTAMP && "CURRENT_TIMESTAMP".equals(column.defaultValue())){
+                        columnDef.append(" DEFAULT CURRENT_TIMESTAMP");
+                    }else {
+                        columnDef.append(" DEFAULT '").append(column.defaultValue()).append("'");
+                    }
+
+                }
+
+                if (column.primary()) {
+                    primaryKeys.add(column.name());
+                }
+
+                if (column.unique()) {
+                    columnDef.append(" UNIQUE");
+                }
+
+                sql.append(columnDef).append(", ");
+            }
         }
 
-        sql.setLength(sql.length() - 2); // remove the last comma
+        if (!primaryKeys.isEmpty()) {
+            sql.append("PRIMARY KEY (").append(String.join(", ", primaryKeys)).append("), ");
+        }
+
+        sql.delete(sql.length() - 2, sql.length());
         sql.append(");");
 
-        try (Connection conn = DatabaseManager.getConnection(); Statement stmt = conn.createStatement()) {
-            stmt.execute(sql.toString());
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
+        try (var connection = dataSource.getConnection();
+             var statement = connection.createStatement()) {
+            statement.execute(sql.toString());
+        } catch (Exception e) {
+            throw new RuntimeException("Error while creating table", e);
         }
 
     }
-
-    private static String getColumnType(Field field) {
-
-        StringBuilder columnDefinition = new StringBuilder();
-
-        if (field.isAnnotationPresent(Id.class)) {
-            return "INT AUTO_INCREMENT PRIMARY KEY";
-        }
-        if (field.isAnnotationPresent(Varchar.class)) {
-            Varchar varchar = field.getAnnotation(Varchar.class);
-            return "VARCHAR(" + varchar.size() + ")";
-        }
-        if (field.isAnnotationPresent(Column.class)) {
-            Column column = field.getAnnotation(Column.class);
-            return column.type().getSqlType();
-        }
-
-        if (field.isAnnotationPresent(Default.class)) {
-            Default defaultAnnotation = field.getAnnotation(Default.class);
-            columnDefinition.append(" DEFAULT ").append("'").append(defaultAnnotation.value()).append("'");
-        }
-        return columnDefinition.toString();
-    }
-
 }

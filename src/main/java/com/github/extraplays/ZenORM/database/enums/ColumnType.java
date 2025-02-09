@@ -1,27 +1,23 @@
 package com.github.extraplays.ZenORM.database.enums;
 
+import lombok.AllArgsConstructor;
 import lombok.Getter;
 
 @Getter
+@AllArgsConstructor
 public enum ColumnType {
 
     INT("INT"),
     FLOAT("FLOAT"),
+    DECIMAL("DECIMAL"),
     BIGINT("BIGINT"),
     VARCHAR("VARCHAR"),
     TEXT("TEXT"),
     BOOLEAN("BOOLEAN"),
     DATE("DATE"),
     TIME("TIME"),
-    TIMESTAMP("TIMESTAMP"),
-    BLOB("BLOB"),
-    JSON("JSON"),
-    ;
+    DATETIME("DATETIME"),
+    TIMESTAMP("TIMESTAMP");
 
-    private final String sqlType;
-
-    ColumnType(String sqlType) {
-        this.sqlType = sqlType;
-    }
-
+    private final String type;
 }

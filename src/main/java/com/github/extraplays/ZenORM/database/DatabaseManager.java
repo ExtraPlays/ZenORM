@@ -2,13 +2,15 @@ package com.github.extraplays.ZenORM.database;
 
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
+import lombok.Getter;
 
 import java.sql.Connection;
 import java.sql.SQLException;
 
+@Getter
 public class DatabaseManager {
 
-    private static HikariDataSource dataSource;
+    private HikariDataSource dataSource;
 
     public DatabaseManager(String host, String database, String username, String password, int port) {
 
@@ -24,7 +26,7 @@ public class DatabaseManager {
         dataSource = new HikariDataSource(config);
     }
 
-    public static Connection getConnection () {
+    public Connection getConnection () {
         try {
             return dataSource.getConnection();
         } catch (SQLException e) {
