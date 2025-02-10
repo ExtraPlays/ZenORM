@@ -23,6 +23,9 @@ public class PlayerData {
     @Column(name = "uuid", type = ColumnType.VARCHAR, length = 36, unique = true)
     private String uuid;
 
+    @Column(name = "money", type = ColumnType.FLOAT, defaultValue = "0.0")
+    private Float money;
+
     @Column(name = "created_at", type = ColumnType.TIMESTAMP, defaultValue = "CURRENT_TIMESTAMP")
     private Timestamp createdAt;
 

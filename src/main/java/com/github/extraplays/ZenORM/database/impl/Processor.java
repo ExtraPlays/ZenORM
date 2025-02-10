@@ -3,8 +3,10 @@ package com.github.extraplays.ZenORM.database.impl;
 import com.github.extraplays.ZenORM.database.annotations.Table;
 import com.github.extraplays.ZenORM.database.annotations.Column;
 import com.github.extraplays.ZenORM.database.interfaces.ORM;
+import com.zaxxer.hikari.HikariDataSource;
 
 import javax.sql.DataSource;
+import java.io.File;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.sql.*;
@@ -15,9 +17,9 @@ public class Processor<T> implements ORM<T> {
     // TODO: improve sql queries, asynchrony, and add more methods
 
     private final Class<T> clazz;
-    private final DataSource dataSource;
+    private final HikariDataSource dataSource;
 
-    public Processor(Class<T> clazz, DataSource dataSource) {
+    public Processor(Class<T> clazz, HikariDataSource dataSource) {
         this.clazz = clazz;
         this.dataSource = dataSource;
         TableGenerator.createTable(clazz, dataSource);
@@ -25,6 +27,28 @@ public class Processor<T> implements ORM<T> {
 
     @Override
     public void save(T object) {
+
+        if (!clazz.isAnnotationPresent(Table.class)) {
+            throw new IllegalArgumentException("The class " + clazz.getName() + " is not annotated with @Table annotation");
+        }
+
+        Field idField = getIdField(clazz);
+        idField.setAccessible(true);
+
+        try {
+            Object idValue = idField.get(object);
+
+            System.out.println("ID: " + idValue);
+
+            if (idValue == null || (idValue instanceof Number && ((Number) idValue).intValue() == 0) || !recordExists(idField.getAnnotation(Column.class).name(), idValue)) {
+                insert(object);
+            } else {
+                update(object);
+            }
+
+        } catch (IllegalAccessException e) {
+            throw new RuntimeException("Failed to access ID field", e);
+        }
 
     }
 
@@ -104,7 +128,51 @@ public class Processor<T> implements ORM<T> {
 
     @Override
     public void update(T object) {
+        if (!clazz.isAnnotationPresent(Table.class)) {
+            throw new IllegalArgumentException("The class " + clazz.getName() + " is not annotated with @Table annotation");
+        }
 
+        Table table = clazz.getAnnotation(Table.class);
+        Field idField = getIdField(clazz);
+        idField.setAccessible(true);
+
+        try {
+            Object idValue = idField.get(object);
+            if (idValue == null) {
+                throw new IllegalArgumentException("Cannot update object without an ID!");
+            }
+
+            StringBuilder sql = new StringBuilder("UPDATE " + table.name() + " SET ");
+            List<Object> values = new ArrayList<>();
+
+            for (Field field : clazz.getDeclaredFields()) {
+                if (field.isAnnotationPresent(Column.class)) {
+                    Column column = field.getAnnotation(Column.class);
+                    if (column.autoIncrement() || column.primary()) continue; // Não atualizar campos de ID ou Auto Increment
+
+                    sql.append(column.name()).append(" = ?, ");
+                    field.setAccessible(true);
+                    values.add(field.get(object));
+                }
+            }
+
+            sql.setLength(sql.length() - 2); // Removendo a última vírgula
+            sql.append(" WHERE ").append(idField.getAnnotation(Column.class).name()).append(" = ?");
+
+            values.add(idValue);
+
+            try (Connection conn = dataSource.getConnection();
+                 PreparedStatement stmt = conn.prepareStatement(sql.toString())) {
+
+                for (int i = 0; i < values.size(); i++) {
+                    stmt.setObject(i + 1, values.get(i));
+                }
+
+                stmt.executeUpdate();
+            }
+        } catch (IllegalAccessException | SQLException e) {
+            throw new RuntimeException("An error occurred while updating the object", e);
+        }
     }
 
     @Override
@@ -250,7 +318,55 @@ public class Processor<T> implements ORM<T> {
 
     @Override
     public List<T> findAll(String... columns) {
-        return null;
+
+        if (!clazz.isAnnotationPresent(Table.class)) {
+            throw new IllegalArgumentException("The class " + clazz.getName() + " is not annotated with @Table annotation");
+        }
+
+        Table table = clazz.getAnnotation(Table.class);
+        StringBuilder sql = new StringBuilder("SELECT ");
+        if (columns.length == 0) {
+            sql.append("*");
+        } else {
+            for (String col : columns) {
+                sql.append(col).append(", ");
+            }
+            sql.setLength(sql.length() - 2);
+        }
+
+        sql.append(" FROM ").append(table.name());
+
+        List<T> objects = new ArrayList<>();
+
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql.toString());
+             ResultSet rs = stmt.executeQuery();
+        ) {
+            while (rs.next()) {
+                T obj = clazz.getDeclaredConstructor().newInstance();
+                // Criamos um Set para verificar se a coluna está na lista passada
+                Set<String> selectedColumns = new HashSet<>(Arrays.asList(columns));
+
+                for (Field field : clazz.getDeclaredFields()) {
+                    if (field.isAnnotationPresent(Column.class)) {
+                        Column columnAnnotation = field.getAnnotation(Column.class);
+                        String columnName = columnAnnotation.name();
+
+                        // Só preenche se estiver na lista de colunas ou se for um SELECT *
+                        if (columns.length == 0 || selectedColumns.contains(columnName)) {
+                            field.setAccessible(true);
+                            field.set(obj, rs.getObject(columnName));
+                        }
+                    }
+                }
+                objects.add(obj);
+            }
+        } catch (SQLException | IllegalAccessException | InstantiationException | NoSuchMethodException | InvocationTargetException e) {
+            throw new RuntimeException("An error occurred while trying to find all objects", e);
+        }
+
+        return objects;
+
     }
 
     @Override
@@ -316,6 +432,30 @@ public class Processor<T> implements ORM<T> {
             return Boolean.parseBoolean(defaultValue);
         }
         return defaultValue;
+    }
+
+    private Field getIdField(Class<?> clazz) {
+        for (Field field : clazz.getDeclaredFields()) {
+            if (field.isAnnotationPresent(Column.class) && field.getAnnotation(Column.class).primary()) {
+                return field;
+            }
+        }
+        throw new IllegalStateException("No primary key found in class " + clazz.getName());
+    }
+
+    private boolean recordExists(String columnName, Object value) {
+        Table table = clazz.getAnnotation(Table.class);
+        String sql = "SELECT COUNT(*) FROM " + table.name() + " WHERE " + columnName + " = ?";
+
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setObject(1, value);
+            try (ResultSet rs = stmt.executeQuery()) {
+                return rs.next() && rs.getLong(1) > 0;
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Error checking record existence", e);
+        }
     }
 
 }

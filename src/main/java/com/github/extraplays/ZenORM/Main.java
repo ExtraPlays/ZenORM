@@ -8,15 +8,12 @@ import java.util.Optional;
 
 public class Main {
 
-    public static void main(String[] args) {
-
-        DatabaseManager databaseManager = new DatabaseManager("localhost", "minecraft", "root", "", 3306);
-
-        Processor<PlayerData> playerDataDAO = new Processor<>(PlayerData.class, databaseManager.getDataSource());
-        Optional<PlayerData> playerData = playerDataDAO.find("uuid", "123");
-
-        playerData.ifPresent(data -> System.out.println(data.toString()));
-
-    }
+//    public static void main(String[] args) {
+//
+//        DatabaseManager databaseManager = new DatabaseManager("localhost", "minecraft", "root", "", 3306);
+//
+//        Processor<PlayerData> dao = new Processor<>(PlayerData.class, databaseManager.getDataSource());
+//
+//    }
 
 }
