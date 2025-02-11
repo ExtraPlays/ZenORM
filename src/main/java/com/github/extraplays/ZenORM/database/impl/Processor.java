@@ -2,11 +2,10 @@ package com.github.extraplays.ZenORM.database.impl;
 
 import com.github.extraplays.ZenORM.database.annotations.Table;
 import com.github.extraplays.ZenORM.database.annotations.Column;
+import com.github.extraplays.ZenORM.database.impl.helpers.TableGenerator;
 import com.github.extraplays.ZenORM.database.interfaces.ORM;
 import com.zaxxer.hikari.HikariDataSource;
 
-import javax.sql.DataSource;
-import java.io.File;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.sql.*;
@@ -14,7 +13,7 @@ import java.util.*;
 
 public class Processor<T> implements ORM<T> {
 
-    // TODO: improve sql queries, asynchrony, and add more methods
+    // TODO: IMPLEMENT CACHE AND SQL HELPER !!!
 
     private final Class<T> clazz;
     private final HikariDataSource dataSource;
@@ -37,8 +36,6 @@ public class Processor<T> implements ORM<T> {
 
         try {
             Object idValue = idField.get(object);
-
-            System.out.println("ID: " + idValue);
 
             if (idValue == null || (idValue instanceof Number && ((Number) idValue).intValue() == 0) || !recordExists(idField.getAnnotation(Column.class).name(), idValue)) {
                 insert(object);
@@ -178,6 +175,30 @@ public class Processor<T> implements ORM<T> {
     @Override
     public void delete(T object) {
 
+        if (!clazz.isAnnotationPresent(Table.class)) {
+            throw new IllegalArgumentException("The class " + clazz.getName() + " is not annotated with @Table annotation");
+        }
+
+        Table table = clazz.getAnnotation(Table.class);
+        Field idField = getIdField(clazz);
+        idField.setAccessible(true);
+
+        try {
+            Object idValue = idField.get(object);
+            if (idValue == null) {
+                throw new IllegalArgumentException("Cannot delete object without an ID!");
+            }
+
+            String sql = "DELETE FROM " + table.name() + " WHERE " + idField.getAnnotation(Column.class).name() + " = ?";
+
+            try (Connection conn = dataSource.getConnection();
+                 PreparedStatement stmt = conn.prepareStatement(sql)) {
+                stmt.setObject(1, idValue);
+                stmt.executeUpdate();
+            }
+        } catch (IllegalAccessException | SQLException e) {
+            throw new RuntimeException("An error occurred while deleting the object", e);
+        }
     }
 
     @Override

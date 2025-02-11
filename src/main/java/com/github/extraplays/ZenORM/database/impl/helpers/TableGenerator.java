@@ -1,4 +1,4 @@
-package com.github.extraplays.ZenORM.database.impl;
+package com.github.extraplays.ZenORM.database.impl.helpers;
 
 import com.github.extraplays.ZenORM.database.annotations.*;
 import com.github.extraplays.ZenORM.database.enums.ColumnType;

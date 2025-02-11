@@ -21,7 +21,7 @@ public class DatabaseManager {
         config.setMaximumPoolSize(10);
         config.setConnectionTimeout(30000);
         config.setIdleTimeout(600000);
-        //config.setDriverClassName("com.mysql.cj.jdbc.Driver");
+        config.setDriverClassName("com.mysql.cj.jdbc.Driver");
 
         dataSource = new HikariDataSource(config);
     }
