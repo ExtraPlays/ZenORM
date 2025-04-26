@@ -80,17 +80,36 @@ public class EntityMapper {
             Object idValue = null;
 
             for (Field field : clazz.getDeclaredFields()) {
-                if (!field.isAnnotationPresent(Column.class)) continue;
-
-                Column column = field.getAnnotation(Column.class);
                 field.setAccessible(true);
-                Object value = field.get(entity);
 
-                if (column.primaryKey()) {
-                    idValue = value;
-                } else {
-                    updates.add(column.name() + "=?");
-                    values.add(value);
+                if (field.isAnnotationPresent(Column.class)) {
+                    Column column = field.getAnnotation(Column.class);
+                    Object value = field.get(entity);
+
+                    if (column.primaryKey()) {
+                        idValue = value;
+                    } else {
+                        updates.add(column.name() + " = ?");
+                        values.add(value);
+                    }
+                }
+
+                if (field.isAnnotationPresent(Embedded.class)) {
+                    Object embeddedObject = field.get(entity);
+
+                    if (embeddedObject != null) {
+                        for (Field embeddedField : embeddedObject.getClass().getDeclaredFields()) {
+                            embeddedField.setAccessible(true);
+
+                            if (embeddedField.isAnnotationPresent(Column.class)) {
+                                Column embeddedColumn = embeddedField.getAnnotation(Column.class);
+
+                                String prefixedName = field.getName() + "_" + embeddedColumn.name();
+                                updates.add(prefixedName + " = ?");
+                                values.add(embeddedField.get(embeddedObject));
+                            }
+                        }
+                    }
                 }
             }
 
@@ -98,7 +117,7 @@ public class EntityMapper {
                 throw new RuntimeException("Cannot update entity without primary key value: " + clazz.getName());
             }
 
-            String sql = "UPDATE " + tableName + " SET " + String.join(", ", updates) + " WHERE " + idColumn + "=?";
+            String sql = "UPDATE " + tableName + " SET " + String.join(", ", updates) + " WHERE " + idColumn + " = ?";
 
             try (PreparedStatement stmt = provider.getConnection().prepareStatement(sql)) {
                 for (int i = 0; i < values.size(); i++) {
@@ -109,9 +128,10 @@ public class EntityMapper {
             }
 
         } catch (Exception e) {
-            e.printStackTrace();
+            throw new RuntimeException("Failed to update entity: " + entity.getClass().getName(), e);
         }
     }
+
 
     public static <T> void delete(T entity, DatabaseProvider provider) {
 
