@@ -132,7 +132,6 @@ public class EntityMapper {
         }
     }
 
-
     public static <T> void delete(T entity, DatabaseProvider provider) {
 
         try {
@@ -266,6 +265,24 @@ public class EntityMapper {
         return results;
     }
 
+    public static <T> List<T> findManyByQuery(Class<T> entityClass, DatabaseProvider provider, String query, Object[] params) {
+        List<T> results = new ArrayList<>();
+        try {
+            try (var stmt = provider.getConnection().prepareStatement(query)) {
+                for (int i = 0; i < params.length; i++) {
+                    stmt.setObject(i + 1, params[i]);
+                }
+
+                var rs = stmt.executeQuery();
+                while (rs.next()) {
+                    results.add(ResultSetMapper.mapResultSet(entityClass, rs));
+                }
+            }
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to execute query for: " + entityClass.getName(), e);
+        }
+        return results;
+    }
 
     public static <T> List<T> findAll(Class<T> entityClass, DatabaseProvider provider) {
         List<T> results = new ArrayList<>();

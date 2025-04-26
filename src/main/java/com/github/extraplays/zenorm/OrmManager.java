@@ -1,6 +1,7 @@
 package com.github.extraplays.zenorm;
 
 import com.github.extraplays.zenorm.providers.DatabaseProvider;
+import com.github.extraplays.zenorm.query.QueryBuilder;
 import com.github.extraplays.zenorm.repository.AsyncRepository;
 import lombok.Getter;
 
@@ -45,9 +46,13 @@ public class OrmManager {
         return repository;
     }
 
+    public <T> QueryBuilder<T> query(Class<T> entityClass) {
+        return new QueryBuilder<>(entityClass, provider);
+    }
+
     public void shutdown() {
         executorService.shutdownNow();
-        provider.disconnect();
+        provider.shutdown();
     }
 
 }

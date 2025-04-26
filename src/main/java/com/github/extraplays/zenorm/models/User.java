@@ -4,6 +4,7 @@ import com.github.extraplays.zenorm.annotations.Column;
 import com.github.extraplays.zenorm.annotations.Embedded;
 import com.github.extraplays.zenorm.annotations.OneToMany;
 import com.github.extraplays.zenorm.annotations.Table;
+import lombok.Data;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -13,6 +14,7 @@ import java.util.List;
 @Getter
 @Setter
 @NoArgsConstructor
+@Data
 @Table(name = "users")
 public class User {
 
@@ -30,6 +32,9 @@ public class User {
 
     @Column(name = "bio", type = "VARCHAR(255)", nullable = true)
     private String bio;
+
+    @Column(name = "age", type = "INTEGER", nullable = true)
+    private int age;
 
     @OneToMany(targetEntity = Post.class, mappedBy = "userId")
     private List<Post> posts;

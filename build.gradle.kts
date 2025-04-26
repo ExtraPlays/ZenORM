@@ -3,7 +3,7 @@ plugins {
 }
 
 group = "com.github.extraplays"
-version = "1.0.3"
+version = "1.0.8"
 
 repositories {
     mavenCentral()
@@ -21,6 +21,8 @@ dependencies {
 
     implementation("org.xerial:sqlite-jdbc:3.43.2.0")
     implementation("mysql:mysql-connector-java:8.0.33")
+
+    implementation("com.zaxxer:HikariCP:6.3.0")
 }
 
 tasks.jar {
