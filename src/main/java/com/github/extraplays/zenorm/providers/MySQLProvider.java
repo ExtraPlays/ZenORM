@@ -31,7 +31,7 @@ public class MySQLProvider implements DatabaseProvider{
         try {
             Class.forName("com.mysql.cj.jdbc.Driver"); // novo driver MySQL
             String url = "jdbc:mysql://" + host + ":" + port + "/" + database +
-                "?useSSL=false&serverTimezone=UTC&characterEncoding=UTF-8";
+                "?allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC&characterEncoding=UTF-8";
             this.connection = DriverManager.getConnection(url, username, password);
             System.out.println("[MySQLProvider] Conectado ao banco MySQL: " + database);
         } catch (Exception e) {
