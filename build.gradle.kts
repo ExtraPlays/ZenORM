@@ -2,8 +2,8 @@ plugins {
     id("java")
 }
 
-group = "com.github.extraplays.zenorm"
-version = "1.0-SNAPSHOT"
+group = "com.github.extraplays"
+version = "1.0.0"
 
 repositories {
     mavenCentral()

@@ -14,13 +14,23 @@ public class SQLiteDialect implements Dialect{
 
     @Override
     public String getType(String originalType) {
-        return switch (originalType) {
-            case "int", "integer" -> "INTEGER";
-            case "text", "varchar" -> "TEXT";
-            case "real", "double", "float" -> "REAL";
-            case "blob" -> "BLOB";
-            case "boolean" -> "BOOLEAN";
-            default -> originalType;
-        };
+        switch (originalType) {
+            case "int":
+            case "integer":
+                return "INTEGER";
+            case "text":
+            case "varchar":
+                return "TEXT";
+            case "real":
+            case "double":
+            case "float":
+                return "REAL";
+            case "blob":
+                return "BLOB";
+            case "boolean":
+                return "BOOLEAN";
+            default:
+                return originalType;
+        }
     }
 }
