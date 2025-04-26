@@ -1,10 +1,10 @@
-package com.github.extraplys.zenorm.entity;
+package com.github.extraplays.zenorm.entity;
 
-import com.github.extraplys.zenorm.OrmManager;
-import com.github.extraplys.zenorm.annotations.Column;
-import com.github.extraplys.zenorm.annotations.Embedded;
-import com.github.extraplys.zenorm.annotations.OneToMany;
-import com.github.extraplys.zenorm.repository.AsyncRepository;
+import com.github.extraplays.zenorm.OrmManager;
+import com.github.extraplays.zenorm.annotations.Column;
+import com.github.extraplays.zenorm.annotations.Embedded;
+import com.github.extraplays.zenorm.annotations.OneToMany;
+import com.github.extraplays.zenorm.repository.AsyncRepository;
 
 import java.lang.reflect.Field;
 import java.sql.ResultSet;

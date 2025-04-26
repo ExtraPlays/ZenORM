@@ -1,4 +1,4 @@
-package com.github.extraplys.zenorm.annotations;
+package com.github.extraplays.zenorm.annotations;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;

@@ -1,4 +1,4 @@
-package com.github.extraplys.zenorm.dialetcs;
+package com.github.extraplays.zenorm.dialetcs;
 
 public class MySQLDialect implements Dialect{
 

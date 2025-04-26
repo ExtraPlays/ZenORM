@@ -1,7 +1,7 @@
-package com.github.extraplys.zenorm.repository;
+package com.github.extraplays.zenorm.repository;
 
-import com.github.extraplys.zenorm.entity.EntityMapper;
-import com.github.extraplys.zenorm.providers.DatabaseProvider;
+import com.github.extraplays.zenorm.entity.EntityMapper;
+import com.github.extraplays.zenorm.providers.DatabaseProvider;
 import lombok.RequiredArgsConstructor;
 
 import java.util.List;

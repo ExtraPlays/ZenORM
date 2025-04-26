@@ -1,7 +1,7 @@
-package com.github.extraplys.zenorm.entity;
+package com.github.extraplays.zenorm.entity;
 
-import com.github.extraplys.zenorm.annotations.Column;
-import com.github.extraplys.zenorm.annotations.Table;
+import com.github.extraplays.zenorm.annotations.Column;
+import com.github.extraplays.zenorm.annotations.Table;
 
 import java.lang.reflect.Field;
 

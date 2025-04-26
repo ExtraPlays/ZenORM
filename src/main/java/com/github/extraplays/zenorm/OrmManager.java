@@ -1,7 +1,7 @@
-package com.github.extraplys.zenorm;
+package com.github.extraplays.zenorm;
 
-import com.github.extraplys.zenorm.providers.DatabaseProvider;
-import com.github.extraplys.zenorm.repository.AsyncRepository;
+import com.github.extraplays.zenorm.providers.DatabaseProvider;
+import com.github.extraplays.zenorm.repository.AsyncRepository;
 import lombok.Getter;
 
 import java.util.HashMap;

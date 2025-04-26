@@ -1,10 +1,10 @@
-package com.github.extraplys.zenorm;
+package com.github.extraplays.zenorm;
 
-import com.github.extraplys.zenorm.entity.TableGenerator;
-import com.github.extraplys.zenorm.models.Post;
-import com.github.extraplys.zenorm.models.User;
-import com.github.extraplys.zenorm.providers.MySQLProvider;
-import com.github.extraplys.zenorm.repository.AsyncRepository;
+import com.github.extraplays.zenorm.entity.TableGenerator;
+import com.github.extraplays.zenorm.models.Post;
+import com.github.extraplays.zenorm.models.User;
+import com.github.extraplays.zenorm.providers.MySQLProvider;
+import com.github.extraplays.zenorm.repository.AsyncRepository;
 
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;

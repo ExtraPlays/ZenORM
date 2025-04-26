@@ -1,9 +1,9 @@
-package com.github.extraplys.zenorm.models;
+package com.github.extraplays.zenorm.models;
 
-import com.github.extraplys.zenorm.annotations.Column;
-import com.github.extraplys.zenorm.annotations.Embedded;
-import com.github.extraplys.zenorm.annotations.OneToMany;
-import com.github.extraplys.zenorm.annotations.Table;
+import com.github.extraplays.zenorm.annotations.Column;
+import com.github.extraplays.zenorm.annotations.Embedded;
+import com.github.extraplays.zenorm.annotations.OneToMany;
+import com.github.extraplays.zenorm.annotations.Table;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;

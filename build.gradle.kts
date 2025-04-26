@@ -2,7 +2,7 @@ plugins {
     id("java")
 }
 
-group = "com.github.extraplys.zenorm"
+group = "com.github.extraplays.zenorm"
 version = "1.0-SNAPSHOT"
 
 repositories {

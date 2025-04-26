@@ -1,8 +1,8 @@
-package com.github.extraplys.zenorm.entity;
+package com.github.extraplays.zenorm.entity;
 
-import com.github.extraplys.zenorm.annotations.Column;
-import com.github.extraplys.zenorm.annotations.Embedded;
-import com.github.extraplys.zenorm.providers.DatabaseProvider;
+import com.github.extraplays.zenorm.annotations.Column;
+import com.github.extraplays.zenorm.annotations.Embedded;
+import com.github.extraplays.zenorm.providers.DatabaseProvider;
 
 import java.lang.reflect.Field;
 import java.sql.PreparedStatement;

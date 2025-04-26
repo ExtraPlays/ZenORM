@@ -1,8 +1,7 @@
-package com.github.extraplys.zenorm.providers;
+package com.github.extraplays.zenorm.providers;
 
-import com.github.extraplys.zenorm.dialetcs.Dialect;
-import com.github.extraplys.zenorm.dialetcs.MySQLDialect;
-import com.github.extraplys.zenorm.dialetcs.SQLiteDialect;
+import com.github.extraplays.zenorm.dialetcs.Dialect;
+import com.github.extraplays.zenorm.dialetcs.MySQLDialect;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
