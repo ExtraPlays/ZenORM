@@ -92,13 +92,15 @@ public class TableGenerator {
         Table table = clazz.getAnnotation(Table.class);
         String tableName = table.name();
 
-        try (var connection = provider.getConnection();
-             var statement = connection.createStatement()) {
+        try {
+            var connection = provider.getConnection(); // NÃO colocar em try-with-resources aqui!
 
+            // Verifica se a tabela existe
             var metaData = connection.getMetaData();
             var tables = metaData.getTables(null, null, tableName, null);
 
             boolean tableExists = tables.next();
+            tables.close(); // <- fecha aqui manualmente
 
             if (!tableExists) {
                 generateTable(clazz, provider, dialect);
@@ -107,11 +109,11 @@ public class TableGenerator {
             }
 
             var columnsRs = metaData.getColumns(null, null, tableName, null);
-
             List<String> existingColumns = new ArrayList<>();
             while (columnsRs.next()) {
                 existingColumns.add(columnsRs.getString("COLUMN_NAME").toLowerCase());
             }
+            columnsRs.close(); // <- fecha aqui também
 
             for (Field field : clazz.getDeclaredFields()) {
                 field.setAccessible(true);
@@ -121,20 +123,14 @@ public class TableGenerator {
                     String columnName = column.name();
 
                     if (!existingColumns.contains(columnName.toLowerCase())) {
-                        // Adicionar coluna nova
                         String sql = "ALTER TABLE " + tableName +
                             " ADD COLUMN " + columnName + " " + dialect.getType(column.type());
 
-                        if (!column.nullable()) {
-                            sql += " NOT NULL";
-                        }
+                        if (!column.nullable()) sql += " NOT NULL";
+                        if (column.unique()) sql += " UNIQUE";
 
-                        if (column.unique()) {
-                            sql += " UNIQUE";
-                        }
-
-                        try (var alterStatement = connection.createStatement()) {
-                            alterStatement.executeUpdate(sql);
+                        try (var alterStmt = connection.createStatement()) {
+                            alterStmt.executeUpdate(sql);
                             System.out.println("[TableGenerator] Coluna adicionada: " + columnName + " na tabela " + tableName);
                         }
                     }
@@ -154,16 +150,11 @@ public class TableGenerator {
                                 String sql = "ALTER TABLE " + tableName +
                                     " ADD COLUMN " + prefixedName + " " + dialect.getType(embeddedColumn.type());
 
-                                if (!embeddedColumn.nullable()) {
-                                    sql += " NOT NULL";
-                                }
+                                if (!embeddedColumn.nullable()) sql += " NOT NULL";
+                                if (embeddedColumn.unique()) sql += " UNIQUE";
 
-                                if (embeddedColumn.unique()) {
-                                    sql += " UNIQUE";
-                                }
-
-                                try (var alterStatement = connection.createStatement()) {
-                                    alterStatement.executeUpdate(sql);
+                                try (var alterStmt = connection.createStatement()) {
+                                    alterStmt.executeUpdate(sql);
                                     System.out.println("[TableGenerator] Coluna adicionada: " + prefixedName + " na tabela " + tableName);
                                 }
                             }

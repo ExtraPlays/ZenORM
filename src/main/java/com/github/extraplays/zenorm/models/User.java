@@ -28,6 +28,9 @@ public class User {
     @Column(name = "email", type = "VARCHAR(255)", unique = true, nullable = false)
     private String email;
 
+    @Column(name = "bio", type = "VARCHAR(255)", nullable = true)
+    private String bio;
+
     @OneToMany(targetEntity = Post.class, mappedBy = "userId")
     private List<Post> posts;
 

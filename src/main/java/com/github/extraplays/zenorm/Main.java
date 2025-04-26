@@ -15,8 +15,8 @@ public class Main {
         MySQLProvider provider = new MySQLProvider("localhost", 3306, "minecraft", "root", "root");
 
         OrmManager orm = new OrmManager(provider);
-        TableGenerator.generateTable(User.class, provider, provider.getDialect());
-        TableGenerator.generateTable(Post.class, provider, provider.getDialect());
+        TableGenerator.migrateTable(User.class, provider, provider.getDialect());
+        TableGenerator.migrateTable(Post.class, provider, provider.getDialect());
 
         AsyncRepository<User> userRepository = orm.getRepository(User.class);
         AsyncRepository<Post> postRepository = orm.getRepository(Post.class);
