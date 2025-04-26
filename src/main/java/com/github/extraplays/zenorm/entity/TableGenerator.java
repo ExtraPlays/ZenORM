@@ -83,4 +83,97 @@ public class TableGenerator {
             throw new RuntimeException("Failed to generate table for class " + clazz.getName(), e);
         }
     }
+
+    public static void migrateTable(Class<?> clazz, DatabaseProvider provider, Dialect dialect) {
+        if (!clazz.isAnnotationPresent(Table.class)) {
+            throw new RuntimeException("Missing @Table annotation in class " + clazz.getName());
+        }
+
+        Table table = clazz.getAnnotation(Table.class);
+        String tableName = table.name();
+
+        try (var connection = provider.getConnection();
+             var statement = connection.createStatement()) {
+
+            var metaData = connection.getMetaData();
+            var tables = metaData.getTables(null, null, tableName, null);
+
+            boolean tableExists = tables.next();
+
+            if (!tableExists) {
+                generateTable(clazz, provider, dialect);
+                System.out.println("[TableGenerator] Tabela criada: " + tableName);
+                return;
+            }
+
+            var columnsRs = metaData.getColumns(null, null, tableName, null);
+
+            List<String> existingColumns = new ArrayList<>();
+            while (columnsRs.next()) {
+                existingColumns.add(columnsRs.getString("COLUMN_NAME").toLowerCase());
+            }
+
+            for (Field field : clazz.getDeclaredFields()) {
+                field.setAccessible(true);
+
+                if (field.isAnnotationPresent(Column.class)) {
+                    Column column = field.getAnnotation(Column.class);
+                    String columnName = column.name();
+
+                    if (!existingColumns.contains(columnName.toLowerCase())) {
+                        // Adicionar coluna nova
+                        String sql = "ALTER TABLE " + tableName +
+                            " ADD COLUMN " + columnName + " " + dialect.getType(column.type());
+
+                        if (!column.nullable()) {
+                            sql += " NOT NULL";
+                        }
+
+                        if (column.unique()) {
+                            sql += " UNIQUE";
+                        }
+
+                        try (var alterStatement = connection.createStatement()) {
+                            alterStatement.executeUpdate(sql);
+                            System.out.println("[TableGenerator] Coluna adicionada: " + columnName + " na tabela " + tableName);
+                        }
+                    }
+                }
+
+                if (field.isAnnotationPresent(Embedded.class)) {
+                    Object embeddedObject = field.getType().getDeclaredConstructor().newInstance();
+                    for (Field embeddedField : embeddedObject.getClass().getDeclaredFields()) {
+                        embeddedField.setAccessible(true);
+
+                        if (embeddedField.isAnnotationPresent(Column.class)) {
+                            Column embeddedColumn = embeddedField.getAnnotation(Column.class);
+
+                            String prefixedName = field.getName() + "_" + embeddedColumn.name();
+
+                            if (!existingColumns.contains(prefixedName.toLowerCase())) {
+                                String sql = "ALTER TABLE " + tableName +
+                                    " ADD COLUMN " + prefixedName + " " + dialect.getType(embeddedColumn.type());
+
+                                if (!embeddedColumn.nullable()) {
+                                    sql += " NOT NULL";
+                                }
+
+                                if (embeddedColumn.unique()) {
+                                    sql += " UNIQUE";
+                                }
+
+                                try (var alterStatement = connection.createStatement()) {
+                                    alterStatement.executeUpdate(sql);
+                                    System.out.println("[TableGenerator] Coluna adicionada: " + prefixedName + " na tabela " + tableName);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to migrate table: " + tableName, e);
+        }
+    }
 }
