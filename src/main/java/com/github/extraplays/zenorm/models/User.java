@@ -14,7 +14,6 @@ import java.util.List;
 @Getter
 @Setter
 @NoArgsConstructor
-@Data
 @Table(name = "users")
 public class User {
 
@@ -24,25 +23,23 @@ public class User {
     @Embedded
     private Identifier identifier;
 
-    @Column(name = "username", type = "VARCHAR(255)", unique = true, nullable = false)
-    private String username;
-
-    @Column(name = "email", type = "VARCHAR(255)", unique = true, nullable = false)
+    @Column(name = "email", unique = true, nullable = false)
     private String email;
 
     @Column(name = "bio", type = "VARCHAR(255)", nullable = true)
     private String bio;
 
     @Column(name = "age", type = "INTEGER", nullable = true)
-    private int age;
+    private Integer age;
 
     @OneToMany(targetEntity = Post.class, mappedBy = "userId")
     private List<Post> posts;
 
-    public User(String uuid, String name, String username, String email) {
-        this.username = username;
+    public User(String uuid, String name, String email, String bio, int age) {
         this.email = email;
         this.identifier = new Identifier(uuid, name);
+        this.bio = bio;
+        this.age = age;
     }
 
 }

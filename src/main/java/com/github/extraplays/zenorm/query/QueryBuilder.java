@@ -5,6 +5,7 @@ import com.github.extraplays.zenorm.entity.TableUtils;
 import com.github.extraplays.zenorm.providers.DatabaseProvider;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
@@ -15,8 +16,10 @@ public class QueryBuilder<T> {
 
     private final List<String> conditions = new ArrayList<>();
     private final List<Object> parameters = new ArrayList<>();
+    private final List<String> orderByFields = new ArrayList<>();
+    private final List<String> selectFields = new ArrayList<>();
 
-    private String orderBy = null;
+    private Integer offset = null;
     private Integer limit = null;
 
     public QueryBuilder(Class<T> entityClass, DatabaseProvider provider) {
@@ -24,40 +27,44 @@ public class QueryBuilder<T> {
         this.provider = provider;
     }
 
+    public QueryBuilder<T> select(String... fields) {
+        selectFields.clear();
+        Collections.addAll(selectFields, fields);
+        return this;
+    }
+
     public QueryBuilder<T> where(String column, String operator, Object value) {
-
-        if (operator == null || operator.isEmpty()) {
-            throw new IllegalArgumentException("Operator cannot be null or empty");
-        }
-
-        if (value == null) {
-            throw new IllegalArgumentException("Value cannot be null");
-        }
-
-        switch (operator) {
-            case "=":
-            case "!=":
-            case ">":
-            case "<":
-            case ">=":
-            case "<=":
-            case "LIKE":
-                break;
-            default:
-                throw new IllegalArgumentException("Invalid operator: " + operator);
-        }
-
+        validateOperator(operator);
         conditions.add(column + " " + operator + " ?");
         parameters.add(value);
         return this;
+    }
+
+    private void validateOperator(String operator) {
+        switch (operator) {
+            case "=", "!=", ">", "<", ">=", "<=", "LIKE":
+                break;
+            default:
+                throw new IllegalArgumentException("Invalid SQL operator: " + operator);
+        }
     }
 
     public QueryBuilder<T> and(String column, String operator, Object value) {
         return where(column, operator, value);
     }
 
+    public QueryBuilder<T> or(String column, String operator, Object value) {
+        if (conditions.isEmpty()) {
+            return where(column, operator, value);
+        }
+        validateOperator(operator);
+        conditions.add("OR " + column + " " + operator + " ?");
+        parameters.add(value);
+        return this;
+    }
+
     public QueryBuilder<T> orderBy(String column, String direction) {
-        this.orderBy = column + " " + direction;
+        orderByFields.add(column + " " + direction);
         return this;
     }
 
@@ -78,18 +85,33 @@ public class QueryBuilder<T> {
 
     private String buildQuery() {
         StringBuilder sql = new StringBuilder();
-        sql.append("SELECT * FROM ").append(TableUtils.getTableName(entityClass));
 
-        if (!conditions.isEmpty()) {
-            sql.append(" WHERE ").append(String.join(" AND ", conditions));
+        sql.append("SELECT ");
+
+        if (!selectFields.isEmpty()) {
+            sql.append(String.join(", ", selectFields));
+        } else {
+            sql.append("*");
         }
 
-        if (orderBy != null) {
-            sql.append(" ORDER BY ").append(orderBy);
+        sql.append(" FROM ").append(TableUtils.getTableName(entityClass));
+
+        if (!conditions.isEmpty()) {
+            sql.append(" WHERE ");
+            sql.append(String.join(" ", conditions));
+        }
+
+        if (!orderByFields.isEmpty()) {
+            sql.append(" ORDER BY ");
+            sql.append(String.join(", ", orderByFields));
         }
 
         if (limit != null) {
             sql.append(" LIMIT ").append(limit);
+        }
+
+        if (offset != null) {
+            sql.append(" OFFSET ").append(offset);
         }
 
         return sql.toString();

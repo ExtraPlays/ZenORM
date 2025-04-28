@@ -11,76 +11,23 @@ import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 
-
 public class TableGenerator {
 
     public static void generateTable(Class<?> clazz, DatabaseProvider provider, Dialect dialect) {
         if (!clazz.isAnnotationPresent(Table.class)) {
-            throw new RuntimeException("Missing @Table annotation in class " + clazz.getName());
+            throw new IllegalArgumentException("Missing @Table annotation in class: " + clazz.getName());
         }
 
-        Table table = clazz.getAnnotation(Table.class);
-        List<String> columns = new ArrayList<>();
+        String tableName = clazz.getAnnotation(Table.class).name();
+        List<String> columns = collectColumns(clazz, dialect);
 
-        for (Field field : clazz.getDeclaredFields()) {
-            field.setAccessible(true);
+        String sql = "CREATE TABLE IF NOT EXISTS " + tableName + " (" + String.join(", ", columns) + ")";
 
-            if (field.isAnnotationPresent(Column.class)) {
-                Column column = field.getAnnotation(Column.class);
-
-                StringBuilder columnDef = new StringBuilder();
-                columnDef.append(column.name()).append(" ").append(dialect.getType(column.type()));
-
-                if (column.primaryKey()) {
-                    columnDef.append(" ").append(dialect.getPrimaryKey());
-                }
-
-                if (column.autoIncrement()) {
-                    columnDef.append(" ").append(dialect.getAutoIncrement());
-                }
-
-                if (!column.nullable()) {
-                    columnDef.append(" NOT NULL");
-                }
-
-                if (column.unique()) {
-                    columnDef.append(" UNIQUE");
-                }
-
-                columns.add(columnDef.toString());
-            }
-
-            if (field.isAnnotationPresent(Embedded.class)) {
-                // Se o campo for @Embedded, percorre os campos internos
-                for (Field embeddedField : field.getType().getDeclaredFields()) {
-                    embeddedField.setAccessible(true);
-
-                    if (embeddedField.isAnnotationPresent(Column.class)) {
-                        Column column = embeddedField.getAnnotation(Column.class);
-
-                        String prefixedColumnName = field.getName() + "_" + column.name();
-
-                        StringBuilder columnDef = new StringBuilder();
-                        columnDef.append(prefixedColumnName).append(" ").append(dialect.getType(column.type()));
-
-                        if (!column.nullable()) {
-                            columnDef.append(" NOT NULL");
-                        }
-
-                        columns.add(columnDef.toString());
-                    }
-                }
-            }
-        }
-
-        String sql = "CREATE TABLE IF NOT EXISTS " + table.name() + " (" + String.join(", ", columns) + ")";
-
-        try (Statement stmt = provider.getConnection().createStatement()) {
+        try (var stmt = provider.getConnection().createStatement()) {
             stmt.executeUpdate(sql);
-            System.out.println("[TableGenerator] Tabela gerada: " + table.name());
+            System.out.println("[TableGenerator] ✅ Tabela criada: " + tableName);
         } catch (Exception e) {
-            e.printStackTrace();
-            throw new RuntimeException("Failed to generate table for class " + clazz.getName(), e);
+            throw new RuntimeException("Failed to generate table: " + tableName, e);
         }
     }
 
@@ -92,28 +39,19 @@ public class TableGenerator {
         Table table = clazz.getAnnotation(Table.class);
         String tableName = table.name();
 
-        try {
-            var connection = provider.getConnection(); // NÃO colocar em try-with-resources aqui!
+        try (var connection = provider.getConnection()) {
 
-            // Verifica se a tabela existe
+            // Primeiro tenta criar a tabela (caso não exista)
+            generateTable(clazz, provider, dialect);
+
             var metaData = connection.getMetaData();
-            var tables = metaData.getTables(null, null, tableName, null);
-
-            boolean tableExists = tables.next();
-            tables.close(); // <- fecha aqui manualmente
-
-            if (!tableExists) {
-                generateTable(clazz, provider, dialect);
-                System.out.println("[TableGenerator] Tabela criada: " + tableName);
-                return;
-            }
-
             var columnsRs = metaData.getColumns(null, null, tableName, null);
+
             List<String> existingColumns = new ArrayList<>();
             while (columnsRs.next()) {
                 existingColumns.add(columnsRs.getString("COLUMN_NAME").toLowerCase());
             }
-            columnsRs.close(); // <- fecha aqui também
+            columnsRs.close();
 
             for (Field field : clazz.getDeclaredFields()) {
                 field.setAccessible(true);
@@ -143,7 +81,6 @@ public class TableGenerator {
 
                         if (embeddedField.isAnnotationPresent(Column.class)) {
                             Column embeddedColumn = embeddedField.getAnnotation(Column.class);
-
                             String prefixedName = field.getName() + "_" + embeddedColumn.name();
 
                             if (!existingColumns.contains(prefixedName.toLowerCase())) {
@@ -166,5 +103,54 @@ public class TableGenerator {
         } catch (Exception e) {
             throw new RuntimeException("Failed to migrate table: " + tableName, e);
         }
+    }
+
+    private static List<String> collectColumns(Class<?> clazz, Dialect dialect) {
+        List<String> columns = new ArrayList<>();
+
+        for (Field field : clazz.getDeclaredFields()) {
+            field.setAccessible(true);
+
+            if (field.isAnnotationPresent(Column.class)) {
+                columns.add(buildColumnDefinition(field.getAnnotation(Column.class), dialect));
+            }
+
+            if (field.isAnnotationPresent(Embedded.class)) {
+                for (Field embeddedField : field.getType().getDeclaredFields()) {
+                    embeddedField.setAccessible(true);
+
+                    if (embeddedField.isAnnotationPresent(Column.class)) {
+                        Column embeddedColumn = embeddedField.getAnnotation(Column.class);
+                        String prefixedName = field.getName() + "_" + embeddedColumn.name();
+                        columns.add(buildColumnDefinition(prefixedName, embeddedColumn, dialect));
+                    }
+                }
+            }
+        }
+
+        return columns;
+    }
+
+    private static String buildColumnDefinition(Column column, Dialect dialect) {
+        return buildColumnDefinition(column.name(), column, dialect);
+    }
+
+    private static String buildColumnDefinition(String columnName, Column column, Dialect dialect) {
+        StringBuilder sb = new StringBuilder();
+        sb.append(columnName).append(" ").append(dialect.getType(column.type()));
+
+        if (column.primaryKey()) {
+            sb.append(" ").append(dialect.getPrimaryKey());
+        }
+        if (column.autoIncrement()) {
+            sb.append(" ").append(dialect.getAutoIncrement());
+        }
+        if (!column.nullable()) {
+            sb.append(" NOT NULL");
+        }
+        if (column.unique()) {
+            sb.append(" UNIQUE");
+        }
+        return sb.toString();
     }
 }

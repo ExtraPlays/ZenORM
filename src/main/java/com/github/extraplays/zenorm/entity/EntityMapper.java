@@ -2,6 +2,7 @@ package com.github.extraplays.zenorm.entity;
 
 import com.github.extraplays.zenorm.annotations.Column;
 import com.github.extraplays.zenorm.annotations.Embedded;
+import com.github.extraplays.zenorm.annotations.OneToMany;
 import com.github.extraplays.zenorm.providers.DatabaseProvider;
 
 import java.lang.reflect.Field;
@@ -24,13 +25,24 @@ public class EntityMapper {
             for (Field field : clazz.getDeclaredFields()) {
                 field.setAccessible(true);
 
+                // IGNORA CAMPOS @OneToMany
+                if (field.isAnnotationPresent(OneToMany.class)) {
+                    continue;
+                }
+
                 if (field.isAnnotationPresent(Column.class)) {
                     Column column = field.getAnnotation(Column.class);
 
                     if (column.autoIncrement()) continue; // Ignorar autoIncrement no insert
 
+                    Object value = field.get(entity);
+
+                    if (value == null && !column.nullable()) {
+                        throw new RuntimeException("Cannot save entity with null value for non-nullable column: " + column.name());
+                    }
+
                     columns.add(column.name());
-                    values.add(field.get(entity));
+                    values.add(value);
                 }
 
                 if (field.isAnnotationPresent(Embedded.class)) {
@@ -43,9 +55,15 @@ public class EntityMapper {
                             if (embeddedField.isAnnotationPresent(Column.class)) {
                                 Column embeddedColumn = embeddedField.getAnnotation(Column.class);
 
+                                Object value = embeddedField.get(embeddedObject);
                                 String prefixedName = field.getName() + "_" + embeddedColumn.name();
+
+                                if (value == null && !embeddedColumn.nullable()) {
+                                    throw new RuntimeException("Cannot save entity with null value for non-nullable column: " + prefixedName);
+                                }
+
                                 columns.add(prefixedName);
-                                values.add(embeddedField.get(embeddedObject));
+                                values.add(value);
                             }
                         }
                     }
